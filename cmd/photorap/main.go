@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -11,6 +12,7 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/EliCDavis/polyform/formats/ply"
 	"github.com/EliCDavis/polyform/modeling"
 	"github.com/EliCDavis/vector/vector3"
 	"github.com/recolude/photogrammetry-recordings/opensfm"
@@ -27,16 +29,16 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-func openSFMPointsToCloud(points map[string]opensfm.PointSchema) modeling.Mesh {
+func openSFMPointsToCloud(points map[string]opensfm.PointSchema) rapio.Binary {
 	positionData := make([]vector3.Float64, 0, len(points))
 	colorData := make([]vector3.Float64, 0, len(points))
 
 	for _, p := range points {
-		positionData = append(positionData, vector3.New(p.Coordinates[0], p.Coordinates[1], p.Coordinates[2]))
+		positionData = append(positionData, vector3.New(p.Coordinates[0], -p.Coordinates[1], p.Coordinates[2]))
 		colorData = append(colorData, vector3.New(p.Color[0], p.Color[1], p.Color[2]).DivByConstant(255.))
 	}
 
-	return modeling.NewPointCloud(
+	pc := modeling.NewPointCloud(
 		map[string][]vector3.Vector[float64]{
 			modeling.PositionAttribute: positionData,
 			modeling.ColorAttribute:    colorData,
@@ -45,6 +47,16 @@ func openSFMPointsToCloud(points map[string]opensfm.PointSchema) modeling.Mesh {
 		nil,
 		nil,
 	)
+
+	buf := bytes.Buffer{}
+	err := ply.WriteASCII(&buf, pc)
+	if err != nil {
+		panic(err)
+	}
+
+	return rapio.NewBinary("points.ply", buf.Bytes(), metadata.NewBlock(map[string]metadata.Property{
+		"points": metadata.NewIntProperty(len(points)),
+	}))
 }
 
 func shotsHaveTimestamp(shots map[string]opensfm.ShotSchema) bool {
@@ -97,7 +109,7 @@ func openSFMCameraToSubject(recon opensfm.ReconstructionSchema, cameraID string)
 		if inferTimestamps {
 			time = float64(shotIndex)
 		}
-		positionCaptures = append(positionCaptures, position.NewCapture(time, shot.Translation[0], shot.Translation[1], shot.Translation[2]))
+		positionCaptures = append(positionCaptures, position.NewCapture(time, shot.Translation[0], -shot.Translation[1], shot.Translation[2]))
 		rotationCaptures = append(rotationCaptures, euler.NewEulerZXYCapture(
 			time,
 			float64(int(math.Round(shot.Rotation[0]*180.))%360),
@@ -153,11 +165,14 @@ func openSfmReconstructionToRecording(recon opensfm.ReconstructionSchema) format
 		[]format.CaptureCollection{},
 		openSFMShotsToSubjects(recon),
 		metadata.NewBlock(map[string]metadata.Property{
-			"cameras": metadata.NewIntProperty(len(recon.Cameras)),
-			"shots":   metadata.NewIntProperty(len(recon.Shots)),
-			"points":  metadata.NewIntProperty(len(recon.Points)),
+			"recolude-grid": metadata.NewBoolProperty(true),
+			"cameras":       metadata.NewIntProperty(len(recon.Cameras)),
+			"shots":         metadata.NewIntProperty(len(recon.Shots)),
+			"points":        metadata.NewIntProperty(len(recon.Points)),
 		}),
-		[]format.Binary{},
+		[]format.Binary{
+			openSFMPointsToCloud(recon.Points),
+		},
 		[]format.BinaryReference{},
 	)
 }
