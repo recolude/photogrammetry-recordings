@@ -1,5 +1,9 @@
+github.com/EliCDavis/bitlib v1.0.0 h1:iMWUThiBzXnEQTAG3C5Mtjzfna8cpFhrmQylhWSJINM=
+github.com/EliCDavis/bitlib v1.0.0/go.mod h1:B/mBEBsbOKSL85ELpHDmN1ncf1gO14Nrum184HWHcPQ=
 github.com/EliCDavis/polyform v0.6.0 h1:Cv863/U4UA0BvJyzJK8xduioIbJIkLr2keFGD3eUBuo=
 github.com/EliCDavis/polyform v0.6.0/go.mod h1:xxgvrHDkaeRdJOn8yjf37jtv31yHKVFcPsFmoo/cFy8=
+github.com/EliCDavis/polyform v0.7.0 h1:b6c6rOX0jY1cea/hKQJN5fmbyhizYQewj1nenwIB2EU=
+github.com/EliCDavis/polyform v0.7.0/go.mod h1:6jODDlJbma7wAh4Jnn3E2GDyTjtFoowQMRgCsYwwuXQ=
 github.com/EliCDavis/vector v1.0.5 h1:Y+V1BHPpSvfTjTaU0x9FJcbv8VdpY0CLI5gtrROo6lo=
 github.com/EliCDavis/vector v1.0.5/go.mod h1:A+Zf8tDKfocwQa9md33HsE53KclL7uayR/cKjKHUFSA=
 github.com/cpuguy83/go-md2man/v2 v2.0.2 h1:p1EgwI/C7NhT0JmVkwCD2ZBK8j4aeHQX2pMHHBfMQ6w=

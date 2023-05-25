@@ -1,1 +1,4 @@
-reconstruction.json
+reconstruction*.json
+*.rap
+*.ply
+*.png

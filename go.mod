@@ -5,7 +5,8 @@ go 1.20
 require github.com/urfave/cli/v2 v2.25.3
 
 require (
-	github.com/EliCDavis/polyform v0.6.0 // indirect
+	github.com/EliCDavis/bitlib v1.0.0 // indirect
+	github.com/EliCDavis/polyform v0.7.0 // indirect
 	github.com/EliCDavis/vector v1.0.5 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	go.mongodb.org/mongo-driver v1.11.6 // indirect

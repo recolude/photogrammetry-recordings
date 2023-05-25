@@ -1,10 +1,8 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math"
 	"os"
@@ -12,10 +10,9 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/EliCDavis/polyform/formats/ply"
-	"github.com/EliCDavis/polyform/modeling"
 	"github.com/EliCDavis/vector/vector3"
 	"github.com/recolude/photogrammetry-recordings/opensfm"
+	"github.com/recolude/photogrammetry-recordings/utilites"
 	"github.com/recolude/rap/format"
 	"github.com/recolude/rap/format/collection/euler"
 	"github.com/recolude/rap/format/collection/event"
@@ -28,36 +25,6 @@ import (
 	"github.com/recolude/rap/format/metadata"
 	"github.com/urfave/cli/v2"
 )
-
-func openSFMPointsToCloud(points map[string]opensfm.PointSchema) rapio.Binary {
-	positionData := make([]vector3.Float64, 0, len(points))
-	colorData := make([]vector3.Float64, 0, len(points))
-
-	for _, p := range points {
-		positionData = append(positionData, vector3.New(p.Coordinates[0], -p.Coordinates[1], p.Coordinates[2]))
-		colorData = append(colorData, vector3.New(p.Color[0], p.Color[1], p.Color[2]).DivByConstant(255.))
-	}
-
-	pc := modeling.NewPointCloud(
-		map[string][]vector3.Vector[float64]{
-			modeling.PositionAttribute: positionData,
-			modeling.ColorAttribute:    colorData,
-		},
-		nil,
-		nil,
-		nil,
-	)
-
-	buf := bytes.Buffer{}
-	err := ply.WriteASCII(&buf, pc)
-	if err != nil {
-		panic(err)
-	}
-
-	return rapio.NewBinary("points.ply", buf.Bytes(), metadata.NewBlock(map[string]metadata.Property{
-		"points": metadata.NewIntProperty(len(points)),
-	}))
-}
 
 func shotsHaveTimestamp(shots map[string]opensfm.ShotSchema) bool {
 	for _, shot := range shots {
@@ -158,7 +125,9 @@ func openSFMShotsToSubjects(recon opensfm.ReconstructionSchema) []format.Recordi
 	return recordings
 }
 
-func openSfmReconstructionToRecording(recon opensfm.ReconstructionSchema) format.Recording {
+func openSfmReconstructionToRecording(recon opensfm.ReconstructionSchema, bins []format.Binary) format.Recording {
+	allBins := bins
+	allBins = append(allBins, opensfm.PointsToCloudBinary(recon.Points))
 	return format.NewRecording(
 		"opensfm",
 		"Open SFM",
@@ -170,9 +139,7 @@ func openSfmReconstructionToRecording(recon opensfm.ReconstructionSchema) format
 			"shots":         metadata.NewIntProperty(len(recon.Shots)),
 			"points":        metadata.NewIntProperty(len(recon.Points)),
 		}),
-		[]format.Binary{
-			openSFMPointsToCloud(recon.Points),
-		},
+		allBins,
 		[]format.BinaryReference{},
 	)
 }
@@ -195,13 +162,17 @@ func main() {
 						Name:  "reconstruction",
 						Usage: "path to openSFM reconstruction file",
 					},
+					&cli.StringSliceFlag{
+						Name:  "openmvs",
+						Usage: "Path to openMVS data to include",
+					},
 					&cli.StringFlag{
 						Name:  "out",
 						Usage: "path to rap file",
 					},
 				},
 				Action: func(c *cli.Context) error {
-					reconstructionData, err := ioutil.ReadFile(c.String("reconstruction"))
+					reconstructionData, err := os.ReadFile(c.String("reconstruction"))
 					if err != nil {
 						return err
 					}
@@ -232,7 +203,18 @@ func main() {
 						rapio.BST16,
 					)
 
-					_, err = rapWriter.Write(openSfmReconstructionToRecording(reconstructionFile[0]))
+					extraBins := make([]format.Binary, 0)
+					if c.IsSet("openmvs") {
+						for _, v := range c.StringSlice("openmvs") {
+							bin, err := utilites.PlyToRapBinary(v, vector3.New[float64](1, -1, 1))
+							if err != nil {
+								return err
+							}
+							extraBins = append(extraBins, bin)
+						}
+					}
+
+					_, err = rapWriter.Write(openSfmReconstructionToRecording(reconstructionFile[0], extraBins))
 
 					return err
 				},
